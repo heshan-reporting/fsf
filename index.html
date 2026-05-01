@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FB Intelligence Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060708;--panel:#0c0e11;--card:#121519;--card2:#171b20;
+  --line:rgba(255,255,255,.07);--line2:rgba(255,255,255,.13);
+  --t:#dde2e8;--t2:rgba(221,226,232,.5);--t3:rgba(221,226,232,.25);
+  --lime:#a3e635;--lime-d:rgba(163,230,53,.1);
+  --sky:#38bdf8;--sky-d:rgba(56,189,248,.1);
+  --amber:#fbbf24;--amber-d:rgba(251,191,36,.1);
+  --rose:#f43f5e;--rose-d:rgba(244,63,94,.1);
+  --violet:#a78bfa;--violet-d:rgba(167,139,250,.1);
+  --teal:#2dd4bf;--teal-d:rgba(45,212,191,.1);
+  --r:6px;--r2:10px;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--t);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999}
+
+/* TOPBAR */
+.topbar{height:44px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;z-index:100}
+.tb-dots{display:flex;gap:5px;margin-right:4px}
+.tb-dot{width:10px;height:10px;border-radius:50%}
+.tb-dot:nth-child(1){background:#ff5f57}.tb-dot:nth-child(2){background:#febc2e}.tb-dot:nth-child(3){background:#28c840}
+.tb-title{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--t3);letter-spacing:.08em;flex:1;text-align:center}
+.tb-right{display:flex;align-items:center;gap:7px}
+.tb-badge{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 9px;border-radius:3px;border:1px solid var(--line2);color:var(--t3);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.tb-badge.live{color:var(--lime);border-color:rgba(163,230,53,.3);background:var(--lime-d);display:flex;align-items:center;gap:5px}
+.tb-badge.live::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--lime);box-shadow:0 0 5px var(--lime);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.tb-badge.period{color:var(--sky);border-color:rgba(56,189,248,.3);background:var(--sky-d);cursor:pointer}
+.tb-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;border-radius:3px;border:1px solid var(--line2);background:none;color:var(--t2);cursor:pointer;transition:all .15s}
+.tb-btn:hover{border-color:var(--lime);color:var(--lime)}
+
+.body-wrap{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:196px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto}
+.sb-sect{padding:10px 0 4px}
+.sb-lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);padding:0 14px;margin-bottom:4px}
+.sb-cmd{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--t2);padding:5px 14px;cursor:pointer;transition:color .12s,background .12s;border-left:2px solid transparent;display:flex;align-items:center;gap:7px}
+.sb-cmd:hover{color:var(--lime);background:var(--lime-d);border-left-color:var(--lime)}
+.sb-cmd .ic{font-size:12px;width:14px;flex-shrink:0}
+.sb-div{height:1px;background:var(--line);margin:6px 14px}
+.sb-foot{margin-top:auto;padding:10px 14px;border-top:1px solid var(--line)}
+.sb-foot-txt{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--t3);line-height:1.7}
+.sb-foot-txt b{color:var(--lime)}
+
+/* TERMINAL */
+.terminal{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.out{flex:1;overflow-y:auto;padding:14px 18px;scrollbar-width:thin;scrollbar-color:var(--line) transparent;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.7}
+.out::-webkit-scrollbar{width:3px}
+.out::-webkit-scrollbar-thumb{background:var(--line2)}
+.ln{margin:0;word-break:break-word}
+.ln.sys{color:var(--t3)}.ln.cmd{color:var(--sky)}.ln.ok{color:var(--lime)}.ln.err{color:var(--rose)}.ln.ai{color:var(--t2);font-style:italic}.ln.wait{color:var(--amber)}.ln.head{color:var(--lime);font-weight:700}.ln.blank{height:8px;display:block}
+
+/* BLOCKS */
+.block{margin:10px 0;border-radius:var(--r2);overflow:hidden;border:1px solid var(--line);background:var(--card)}
+.bh{background:var(--card2);padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.bh-title{font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--t)}
+.bh-meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3)}
+.bb{padding:14px 16px}
+.kpis{display:grid;gap:8px;margin-bottom:12px}
+.kpis.g2{grid-template-columns:repeat(2,1fr)}.kpis.g3{grid-template-columns:repeat(3,1fr)}.kpis.g4{grid-template-columns:repeat(4,1fr)}.kpis.g5{grid-template-columns:repeat(5,1fr)}
+.kp{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px}
+.kp-l{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--t3);letter-spacing:.04em;margin-bottom:5px}
+.kp-v{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1}
+.kp-s{font-size:10px;color:var(--t3);margin-top:3px;font-family:'IBM Plex Mono',monospace}
+.kp.lime{border-color:rgba(163,230,53,.2)}.kp.lime .kp-v{color:var(--lime)}
+.kp.sky{border-color:rgba(56,189,248,.2)}.kp.sky .kp-v{color:var(--sky)}
+.kp.amb{border-color:rgba(251,191,36,.2)}.kp.amb .kp-v{color:var(--amber)}
+.kp.rose{border-color:rgba(244,63,94,.2)}.kp.rose .kp-v{color:var(--rose)}
+.kp.vio{border-color:rgba(167,139,250,.2)}.kp.vio .kp-v{color:var(--violet)}
+.kp.teal{border-color:rgba(45,212,191,.2)}.kp.teal .kp-v{color:var(--teal)}
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px}
+.tbl th{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);padding:6px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl th:first-child{text-align:left}
+.tbl td{padding:7px 12px;color:var(--t2);text-align:right;border-bottom:1px solid rgba(255,255,255,.025)}
+.tbl td:first-child{text-align:left;font-family:'IBM Plex Sans',sans-serif;color:var(--t);font-size:12px}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.02)}
+.pill{font-size:10px;font-weight:600;padding:2px 7px;border-radius:3px;font-family:'IBM Plex Mono',monospace;white-space:nowrap;display:inline-block}
+.pill.pos{color:var(--lime);background:var(--lime-d);border:1px solid rgba(163,230,53,.25)}
+.pill.neu{color:var(--sky);background:var(--sky-d);border:1px solid rgba(56,189,248,.2)}
+.pill.neg{color:var(--rose);background:var(--rose-d);border:1px solid rgba(244,63,94,.2)}
+.pill.nr{color:var(--amber);background:var(--amber-d);border:1px solid rgba(251,191,36,.2)}
+.pill.unk{color:var(--t3);background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.bar-lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--t2);width:130px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;background:var(--lime)}
+.bar-val{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--t3);width:55px;text-align:right;flex-shrink:0}
+.cc{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:6px;border-left-width:3px}
+.cc.pos{border-left-color:var(--lime)}.cc.neu{border-left-color:var(--sky)}.cc.neg{border-left-color:var(--rose)}.cc.unk{border-left-color:var(--t3)}
+.cc-meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3);display:flex;gap:10px;margin-bottom:4px;flex-wrap:wrap}
+.cc-txt{font-size:13px;color:var(--t);line-height:1.55;word-break:break-word}
+.cc-foot{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center}
+.react-grid{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.react-box{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;display:flex;align-items:center;gap:7px}
+.react-emoji{font-size:16px}.react-n{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:var(--t)}.react-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3)}
+.ch-wrap{position:relative;margin-top:12px}
+
+/* INPUT */
+.input-zone{flex-shrink:0;background:var(--panel);border-top:1px solid var(--line)}
+.suggestions{display:flex;gap:5px;flex-wrap:wrap;padding:7px 16px;border-bottom:1px solid var(--line)}
+.sug{font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:3px 10px;border-radius:3px;border:1px solid var(--line);color:var(--t3);cursor:pointer;transition:all .12s;background:none}
+.sug:hover{border-color:var(--lime);color:var(--lime);background:var(--lime-d)}
+.input-row{display:flex;align-items:center;gap:10px;padding:10px 16px}
+.prompt-lbl{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--lime);flex-shrink:0}
+.cmd-in{flex:1;background:none;border:none;outline:none;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--t);caret-color:var(--lime)}
+.cmd-in::placeholder{color:var(--t3)}
+.run-btn{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:6px 14px;border-radius:4px;background:var(--lime);color:#060708;border:none;cursor:pointer}
+.run-btn:hover{opacity:.85}.run-btn:disabled{opacity:.35;cursor:not-allowed}
+.dl-btn{display:inline-flex;align-items:center;gap:6px;background:var(--lime);color:#060708;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;padding:7px 14px;border-radius:4px;border:none;cursor:pointer;margin-top:10px}
+
+/* MODALS */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);backdrop-filter:blur(10px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--panel);border:1px solid var(--line2);border-radius:14px;max-width:560px;width:100%;max-height:94vh;overflow-y:auto;display:flex;flex-direction:column}
+.modal-hdr{padding:22px 26px 14px;border-bottom:1px solid var(--line);flex-shrink:0}
+.modal-title{font-size:16px;font-weight:600;color:var(--t);margin-bottom:3px}
+.modal-sub{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--t3);line-height:1.5}
+.modal-bd{padding:20px 26px;flex:1;overflow-y:auto}
+.modal-ft{padding:14px 26px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+
+/* Step pips */
+.pips{display:flex;gap:6px;margin-bottom:20px}
+.pip{flex:1;height:3px;background:var(--line);border-radius:2px;transition:background .3s}
+.pip.done{background:var(--lime)}.pip.active{background:var(--amber)}
+.sp{display:none}.sp.active{display:block}
+
+/* Form */
+.mf{margin-bottom:14px}
+.mf label{display:block;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:6px}
+.mf input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:var(--r);color:var(--t);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:10px 12px;outline:none;transition:border-color .2s}
+.mf input:focus{border-color:var(--lime)}
+.mf input::placeholder{color:var(--t3)}
+.mf-hint{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3);margin-top:5px;line-height:1.5}
+.mf-hint a{color:var(--sky)}
+
+/* Account picker list */
+.acct-list{display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.acct-card{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--card2);border:1.5px solid var(--line);border-radius:var(--r);cursor:pointer;transition:all .15s;position:relative}
+.acct-card:hover{border-color:rgba(255,255,255,.2);background:var(--card)}
+.acct-card.sel{border-color:var(--lime);background:var(--lime-d)}
+.acct-card input[type=radio]{accent-color:var(--lime);flex-shrink:0;width:14px;height:14px}
+.acct-card-info{flex:1;min-width:0}
+.acct-card-name{font-size:13px;font-weight:600;color:var(--t);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct-card-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3)}
+.acct-status{font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid var(--line);color:var(--t3);white-space:nowrap;flex-shrink:0}
+.acct-status.active{color:var(--lime);border-color:rgba(163,230,53,.35);background:var(--lime-d)}
+
+/* Loading spinner */
+.spin-row{display:flex;align-items:center;gap:9px;padding:12px 14px;background:var(--card2);border-radius:var(--r);font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--t3)}
+.spin{width:12px;height:12px;border:1.5px solid rgba(255,255,255,.1);border-top-color:var(--lime);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Presets + date */
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.chip{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 9px;border-radius:3px;border:1px solid var(--line);color:var(--t3);cursor:pointer;background:none;transition:all .12s}
+.chip:hover,.chip.on{border-color:var(--sky);color:var(--sky);background:var(--sky-d)}
+.date-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.m-btn{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;padding:9px 18px;border-radius:5px;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:opacity .15s}
+.m-btn:hover{opacity:.85}
+.m-btn.pri{background:var(--lime);color:#060708}
+.m-btn.sec{background:var(--card2);color:var(--t2);border:1px solid var(--line)}
+.m-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* Info boxes */
+.ibox{border-radius:var(--r);padding:11px 13px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;line-height:1.7;margin-bottom:14px}
+.ibox.blue{background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.2);color:var(--sky)}
+.ibox.green{background:var(--lime-d);border:1px solid rgba(163,230,53,.2);color:var(--lime)}
+.ibox.amber{background:var(--amber-d);border:1px solid rgba(251,191,36,.2);color:var(--amber)}
+.ibox b{color:var(--t)}
+
+/* Quick date modal */
+.qmodal{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);z-index:300;display:none;align-items:center;justify-content:center;padding:20px}
+.qmodal.open{display:flex}
+.qbox{background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:22px;max-width:400px;width:100%}
+.qbox-title{font-size:13px;font-weight:600;color:var(--t);margin-bottom:3px}
+.qbox-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3);margin-bottom:14px}
+.date-inp{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:var(--r);color:var(--t);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:9px 11px;outline:none}
+.date-inp:focus{border-color:var(--lime)}
+</style>
+</head>
+<body>
+
+<script>
+// ── OAuth redirect handler ─────────────────────────────────────────────────
+// When Facebook redirects back to this page after login, the token is in the
+// URL hash. We detect this, postMessage to the opener, then close the popup.
+(function(){
+  var h = window.location.hash || window.location.search;
+  if (h && h.indexOf('access_token') !== -1) {
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var token = params.get('access_token');
+    if (token && window.opener) {
+      window.opener.postMessage({ type: 'fb_oauth_token', token: token }, '*');
+      window.close();
+      return;
+    }
+  }
+})();
+</script>
+
+<!-- ═══════ SETUP MODAL ═══════════════════════════════════════════ -->
+<div class="overlay" id="setupModal">
+<div class="modal">
+  <div class="modal-hdr">
+    <div class="modal-title">🔌 Facebook Intelligence Terminal</div>
+    <div class="modal-sub">Live data · Graph API v19.0 · Ad comments · No page token needed</div>
+  </div>
+  <div class="modal-bd">
+    <div class="pips">
+      <div class="pip active" id="pip0"></div><div style="width:4px"></div>
+      <div class="pip" id="pip1"></div><div style="width:4px"></div>
+      <div class="pip" id="pip2"></div>
+    </div>
+
+    <!-- ─── STEP 0: Facebook Login ─────────────────────────────── -->
+    <div class="sp active" id="sp0">
+
+      <!-- Tab toggle -->
+      <div style="display:flex;gap:0;margin-bottom:18px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden">
+        <button id="tab-sdk" onclick="showTab('sdk')" style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:9px;border:none;cursor:pointer;background:var(--lime);color:#060708;transition:all .15s">🔐 Login with Facebook</button>
+        <button id="tab-manual" onclick="showTab('manual')" style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:9px;border:none;cursor:pointer;background:var(--card2);color:var(--t2);transition:all .15s">📋 Paste token manually</button>
+      </div>
+
+      <!-- TAB A: Facebook Login via popup -->
+      <div id="tab-sdk-panel">
+        <div class="ibox blue" style="margin-bottom:14px">
+          <b>One-time 3-min setup:</b><br>
+          1. Go to <a href="https://developers.facebook.com/apps/" target="_blank" style="color:var(--sky)">developers.facebook.com/apps</a> → <b>Create App</b> → Business → Next<br>
+          2. Copy your <b>App ID</b> from the dashboard and paste below<br>
+          3. In your App → <b>Facebook Login → Settings</b>, add this redirect URI:<br>
+          &nbsp;&nbsp;<span id="redirect-uri-display" style="color:var(--lime);font-size:10px">loading…</span><br>
+          4. Click <b>Login with Facebook</b> below — done! No manual token copying.
+        </div>
+        <div class="mf">
+          <label>Facebook App ID</label>
+          <input type="text" id="inp-app-id" placeholder="123456789012345" autocomplete="off" style="letter-spacing:.05em"/>
+          <div class="mf-hint">Paste your App ID (numbers only, found on your app dashboard)</div>
+        </div>
+        <div id="login-btn-wrap" style="margin-bottom:12px">
+          <button onclick="doFBLogin()" style="width:100%;padding:12px;background:#1877f2;color:#fff;border:none;border-radius:var(--r);font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:opacity .15s">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            Login with Facebook
+          </button>
+        </div>
+        <div id="login-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--t3);text-align:center;min-height:20px"></div>
+      </div>
+
+      <!-- TAB B: Manual token paste -->
+      <div id="tab-manual-panel" style="display:none">
+        <div class="ibox blue">
+          <b>Get your token:</b><br>
+          1. Open <a href="https://developers.facebook.com/tools/explorer/" target="_blank" style="color:var(--sky)">developers.facebook.com/tools/explorer</a><br>
+          2. Click <b>Generate Access Token</b><br>
+          3. Grant: <b>ads_read · ads_management · pages_read_engagement · pages_show_list</b><br>
+          4. Copy and paste below ↓
+        </div>
+        <div class="mf">
+          <label>Facebook User Access Token</label>
+          <input type="password" id="inp-fb" placeholder="EAABxxx…" autocomplete="off"/>
+        </div>
+      </div>
+
+      <div class="mf" style="margin-top:14px">
+        <label>Anthropic API Key <span style="text-transform:none;letter-spacing:0;font-weight:300">(optional — AI sentiment)</span></label>
+        <input type="password" id="inp-claude" placeholder="sk-ant-…" autocomplete="off"/>
+        <div class="mf-hint"><a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com/settings/keys</a></div>
+      </div>
+    </div>
+
+    <!-- ─── STEP 1: Pick Ad Account ─────────────────────────────── -->
+    <div class="sp" id="sp1">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--t2);margin-bottom:14px;line-height:1.6">
+        Select the ad account you want to analyse. All accounts linked to your token are listed below.
+      </div>
+      <div id="acct-wrap">
+        <div class="spin-row"><div class="spin"></div>Fetching your ad accounts from Facebook…</div>
+      </div>
+      <div id="acct-err" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--rose);margin-top:10px;line-height:1.5"></div>
+    </div>
+
+    <!-- ─── STEP 2: Date Period ──────────────────────────────────── -->
+    <div class="sp" id="sp2">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--t2);margin-bottom:14px">Default reporting period. Change anytime from the terminal.</div>
+      <div class="mf">
+        <label>Quick presets</label>
+        <div class="chips">
+          <button class="chip" onclick="pickPreset('last_7d','Last 7 days',this)">Last 7 days</button>
+          <button class="chip on" onclick="pickPreset('last_30d','Last 30 days',this)">Last 30 days</button>
+          <button class="chip" onclick="pickPreset('last_60d','Last 60 days',this)">Last 60 days</button>
+          <button class="chip" onclick="pickPreset('last_90d','Last 90 days',this)">Last 90 days</button>
+          <button class="chip" onclick="pickPreset('this_month','This month',this)">This month</button>
+          <button class="chip" onclick="pickPreset('last_month','Last month',this)">Last month</button>
+          <button class="chip" onclick="pickPreset('custom','Custom…',this)">Custom →</button>
+        </div>
+      </div>
+      <div id="custom-wrap" style="display:none">
+        <div class="mf"><label>Date range</label>
+          <div class="date-grid"><input type="date" class="date-inp" id="inp-from"><input type="date" class="date-inp" id="inp-to"></div>
+        </div>
+      </div>
+      <div id="period-preview" style="font-family:'IBM Plex Mono',monospace;font-size:11px;padding:10px 12px;background:var(--card2);border-radius:var(--r);color:var(--sky)">Period: Last 30 days</div>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="m-btn sec" id="backBtn" onclick="stepBack()" style="display:none">← Back</button>
+    <button class="m-btn pri" id="nextBtn" onclick="stepNext()">Next →</button>
+  </div>
+</div>
+</div>
+
+<!-- ═══════ DATE MODAL ══════════════════════════════════════════════ -->
+<div class="qmodal" id="dateModal">
+<div class="qbox">
+  <div class="qbox-title">📅 Change Reporting Period</div>
+  <div class="qbox-sub" id="cur-period-lbl">Current: Last 30 days</div>
+  <div class="chips" style="margin-bottom:14px">
+    <button class="chip" onclick="quickPeriod('last_7d','Last 7 days',this)">7d</button>
+    <button class="chip" onclick="quickPeriod('last_14d','Last 14 days',this)">14d</button>
+    <button class="chip on" onclick="quickPeriod('last_30d','Last 30 days',this)">30d</button>
+    <button class="chip" onclick="quickPeriod('last_60d','Last 60 days',this)">60d</button>
+    <button class="chip" onclick="quickPeriod('last_90d','Last 90 days',this)">90d</button>
+    <button class="chip" onclick="quickPeriod('this_month','This month',this)">This month</button>
+    <button class="chip" onclick="quickPeriod('last_month','Last month',this)">Last month</button>
+  </div>
+  <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Custom range</div>
+  <div class="date-grid" style="margin-bottom:14px">
+    <div>
+      <label style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3);display:block;margin-bottom:5px;letter-spacing:.08em;text-transform:uppercase">From</label>
+      <input type="date" class="date-inp" id="dm-from">
+    </div>
+    <div>
+      <label style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3);display:block;margin-bottom:5px;letter-spacing:.08em;text-transform:uppercase">To</label>
+      <input type="date" class="date-inp" id="dm-to">
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;justify-content:flex-end">
+    <button class="m-btn sec" onclick="document.getElementById('dateModal').classList.remove('open')">Cancel</button>
+    <button class="m-btn pri" onclick="applyCustomPeriod()">Apply</button>
+  </div>
+</div>
+</div>
+
+<!-- ═══════ TOPBAR ═══════════════════════════════════════════════════ -->
+<div class="topbar">
+  <div class="tb-dots"><div class="tb-dot"></div><div class="tb-dot"></div><div class="tb-dot"></div></div>
+  <div class="tb-title">FACEBOOK INTELLIGENCE TERMINAL · GRAPH API v19.0</div>
+  <div class="tb-right">
+    <div class="tb-badge live" id="modeTag">NOT CONNECTED</div>
+    <div class="tb-badge" id="acctTag" style="max-width:180px">—</div>
+    <div class="tb-badge period" id="periodTag" onclick="document.getElementById('dateModal').classList.add('open')">📅 Last 30 days</div>
+    <button class="tb-btn" onclick="document.getElementById('setupModal').style.display='flex'">⚙ Setup</button>
+  </div>
+</div>
+
+<div class="body-wrap">
+<div class="sidebar">
+  <div class="sb-sect">
+    <div class="sb-lbl">Performance</div>
+    <div class="sb-cmd" onclick="go('show campaigns')"><span class="ic">📊</span>Campaigns</div>
+    <div class="sb-cmd" onclick="go('ad breakdown')"><span class="ic">🎯</span>Ad breakdown</div>
+    <div class="sb-cmd" onclick="go('daily spend trend')"><span class="ic">📈</span>Spend trend</div>
+    <div class="sb-cmd" onclick="go('top ads')"><span class="ic">🏆</span>Top ads</div>
+  </div>
+  <div class="sb-div"></div>
+  <div class="sb-sect">
+    <div class="sb-lbl">Ad Comments</div>
+    <div class="sb-cmd" onclick="go('pull all ad comments')"><span class="ic">💬</span>All ad comments</div>
+    <div class="sb-cmd" onclick="go('show reactions')"><span class="ic">❤️</span>Reactions</div>
+    <div class="sb-cmd" onclick="go('negative comments')"><span class="ic">⚠️</span>Negative</div>
+    <div class="sb-cmd" onclick="go('comments needing reply')"><span class="ic">🔔</span>Needs reply</div>
+    <div class="sb-cmd" onclick="go('analyse sentiment')"><span class="ic">🤖</span>AI sentiment</div>
+  </div>
+  <div class="sb-div"></div>
+  <div class="sb-sect">
+    <div class="sb-lbl">Reports</div>
+    <div class="sb-cmd" onclick="go('generate report')"><span class="ic">📄</span>Generate report</div>
+    <div class="sb-cmd" onclick="go('compare ads')"><span class="ic">⚡</span>Compare ads</div>
+  </div>
+  <div class="sb-div"></div>
+  <div class="sb-sect">
+    <div class="sb-lbl">Period</div>
+    <div class="sb-cmd" onclick="go('set period last 7 days')"><span class="ic">7</span>Last 7 days</div>
+    <div class="sb-cmd" onclick="go('set period last 30 days')"><span class="ic">30</span>Last 30 days</div>
+    <div class="sb-cmd" onclick="go('set period last 90 days')"><span class="ic">90</span>Last 90 days</div>
+    <div class="sb-cmd" onclick="document.getElementById('dateModal').classList.add('open')"><span class="ic">📅</span>Custom range</div>
+  </div>
+  <div class="sb-div"></div>
+  <div class="sb-sect">
+    <div class="sb-lbl">System</div>
+    <div class="sb-cmd" onclick="go('help')"><span class="ic">?</span>Help</div>
+    <div class="sb-cmd" onclick="clearOut()"><span class="ic">×</span>Clear</div>
+  </div>
+  <div class="sb-foot">
+    <div class="sb-foot-txt">Source: <b>Facebook Graph API</b><br>Comments via <b>ad creative</b><br>post IDs · user token</div>
+  </div>
+</div>
+
+<div class="terminal">
+  <div class="out" id="out"></div>
+  <div class="input-zone">
+    <div class="suggestions">
+      <span class="sug" onclick="fill(this)">show campaigns</span>
+      <span class="sug" onclick="fill(this)">pull all ad comments</span>
+      <span class="sug" onclick="fill(this)">show reactions</span>
+      <span class="sug" onclick="fill(this)">analyse sentiment</span>
+      <span class="sug" onclick="fill(this)">set period last 30 days</span>
+      <span class="sug" onclick="fill(this)">generate report</span>
+    </div>
+    <div class="input-row">
+      <div class="prompt-lbl">fb:terminal $</div>
+      <input class="cmd-in" id="cin" placeholder="Type a command…" autocomplete="off"/>
+      <button class="run-btn" id="runBtn" onclick="run()">↵ RUN</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────
+const GRAPH = 'https://graph.facebook.com/v19.0';
+let FB_TOKEN = '', AD_ACCOUNT = '', ACCT_NAME = '', CLAUDE_KEY = '';
+let PERIOD = { preset: 'last_30d', label: 'Last 30 days', from: null, to: null };
+let cachedComments = [], cachedAds = [], chartN = 0;
+let step = 0, selectedAcctId = '', fetchedAccts = [];
+
+// ─── Setup ────────────────────────────────────────────────────────────────
+async function stepNext() {
+  if (step === 0) {
+    // Determine which tab is active
+    const sdkActive = document.getElementById('tab-sdk-panel').style.display !== 'none';
+    if (sdkActive) {
+      if (!FB_TOKEN) { alert('Please click "Login with Facebook" first.'); return; }
+    } else {
+      const raw = document.getElementById('inp-fb').value;
+      const tok = raw.split('').filter(c => c.charCodeAt(0) > 32 && c.charCodeAt(0) !== 160).join('');
+      if (!tok) { alert('Please paste your Facebook User Access Token.'); return; }
+      if (tok.length < 50) { alert('Token looks too short — make sure you copied the full token.'); return; }
+      FB_TOKEN = tok;
+    }
+    CLAUDE_KEY = document.getElementById('inp-claude').value.trim();
+    goStep(1);
+    await loadAccounts();
+
+  } else if (step === 1) {
+    if (!selectedAcctId) { alert('Please select an ad account.'); return; }
+    AD_ACCOUNT = selectedAcctId;
+    ACCT_NAME = fetchedAccts.find(a => a.id === selectedAcctId)?.name || selectedAcctId;
+    goStep(2);
+
+  } else if (step === 2) {
+    if (PERIOD.preset === 'custom') {
+      const f = document.getElementById('inp-from').value;
+      const t = document.getElementById('inp-to').value;
+      if (!f || !t) { alert('Please select both dates.'); return; }
+      PERIOD = { preset: null, label: `${f} → ${t}`, from: f, to: t };
+    }
+    document.getElementById('setupModal').style.display = 'none';
+    updateTopbar();
+    boot();
+  }
+}
+
+function stepBack() { if (step > 0) goStep(step - 1); }
+
+function goStep(n) {
+  step = n;
+  document.querySelectorAll('.sp').forEach((el, i) => el.classList.toggle('active', i === n));
+  ['pip0','pip1','pip2'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.className = 'pip' + (i < n ? ' done' : i === n ? ' active' : '');
+  });
+  document.getElementById('backBtn').style.display = n > 0 ? '' : 'none';
+  document.getElementById('nextBtn').textContent = n === 2 ? '🚀 Launch Terminal' : 'Next →';
+}
+
+// ── Tab toggle ────────────────────────────────────────────────────────────
+function showTab(tab) {
+  const sdkPanel = document.getElementById('tab-sdk-panel');
+  const manualPanel = document.getElementById('tab-manual-panel');
+  const sdkBtn = document.getElementById('tab-sdk');
+  const manualBtn = document.getElementById('tab-manual');
+  if (tab === 'sdk') {
+    sdkPanel.style.display = '';
+    manualPanel.style.display = 'none';
+    sdkBtn.style.background = 'var(--lime)';
+    sdkBtn.style.color = '#060708';
+    manualBtn.style.background = 'var(--card2)';
+    manualBtn.style.color = 'var(--t2)';
+  } else {
+    sdkPanel.style.display = 'none';
+    manualPanel.style.display = '';
+    sdkBtn.style.background = 'var(--card2)';
+    sdkBtn.style.color = 'var(--t2)';
+    manualBtn.style.background = 'var(--lime)';
+    manualBtn.style.color = '#060708';
+  }
+}
+
+// Set redirect URI display on page load
+window.addEventListener('DOMContentLoaded', function() {
+  var uri = window.location.href.split('#')[0].split('?')[0];
+  var el = document.getElementById('redirect-uri-display');
+  if (el) el.textContent = uri;
+});
+
+// ── Facebook OAuth popup login ─────────────────────────────────────────────
+function doFBLogin() {
+  var appId = document.getElementById('inp-app-id').value.trim();
+  if (!appId || !/^\d+$/.test(appId)) {
+    alert('Please enter your Facebook App ID (numbers only).');
+    return;
+  }
+
+  var redirectUri = window.location.href.split('#')[0].split('?')[0];
+  var scope = 'ads_read,ads_management,pages_read_engagement,pages_show_list';
+
+  var oauthUrl = 'https://www.facebook.com/dialog/oauth?' +
+    'client_id=' + encodeURIComponent(appId) +
+    '&redirect_uri=' + encodeURIComponent(redirectUri) +
+    '&response_type=token' +
+    '&scope=' + encodeURIComponent(scope) +
+    '&display=popup';
+
+  var status = document.getElementById('login-status');
+  status.style.color = 'var(--amber)';
+  status.textContent = 'Opening Facebook login popup…';
+
+  var popup = window.open(oauthUrl, 'fb_oauth', 'width=650,height=620,toolbar=no,menubar=no,resizable=yes,scrollbars=yes');
+
+  if (!popup || popup.closed) {
+    status.style.color = 'var(--rose)';
+    status.textContent = '⚠️ Popup blocked — allow popups for this site and try again.';
+    return;
+  }
+
+  // Listen for postMessage from the popup (our OAuth redirect handler)
+  function onMsg(e) {
+    if (e.data && e.data.type === 'fb_oauth_token') {
+      window.removeEventListener('message', onMsg);
+      FB_TOKEN = e.data.token;
+      status.style.color = 'var(--lime)';
+      status.textContent = '✓ Logged in! Token captured. Click Next →';
+      document.getElementById('nextBtn').style.background = 'var(--lime)';
+    }
+  }
+  window.addEventListener('message', onMsg);
+
+  // Fallback: poll popup for direct URL access (same origin after redirect)
+  var pollTimer = setInterval(function() {
+    if (!popup || popup.closed) {
+      clearInterval(pollTimer);
+      if (!FB_TOKEN) {
+        status.style.color = 'var(--rose)';
+        status.textContent = 'Popup closed without completing login. Try again.';
+      }
+      return;
+    }
+    try {
+      var hash = popup.location.hash;
+      if (hash && hash.indexOf('access_token') !== -1) {
+        clearInterval(pollTimer);
+        var params = new URLSearchParams(hash.replace(/^#/, ''));
+        var token = params.get('access_token');
+        if (token) {
+          popup.close();
+          FB_TOKEN = token;
+          status.style.color = 'var(--lime)';
+          status.textContent = '✓ Logged in successfully! Click Next →';
+        }
+      }
+    } catch(e) {
+      // Cross-origin while popup is on facebook.com — expected, keep polling
+    }
+  }, 400);
+
+  // Timeout after 3 minutes
+  setTimeout(function() {
+    clearInterval(pollTimer);
+    window.removeEventListener('message', onMsg);
+    if (!FB_TOKEN && !popup.closed) popup.close();
+  }, 180000);
+}
+
+async function loadAccounts() {
+  const wrap = document.getElementById('acct-wrap');
+  const errDiv = document.getElementById('acct-err');
+  errDiv.style.display = 'none';
+
+  // ── Step A: validate token with /me ───────────────────────────
+  wrap.innerHTML = '<div class="spin-row"><div class="spin"></div>Validating token with /me…</div>';
+  try {
+    const meUrl = `https://graph.facebook.com/v19.0/me?fields=id,name&access_token=${encodeURIComponent(FB_TOKEN)}`;
+    let r, d;
+    try {
+      r = await fetch(meUrl);
+      d = await r.json();
+    } catch(netErr) {
+      // Network-level failure — fetch never reached Facebook
+      showAcctError(
+        '🌐 Network error — could not reach Facebook.',
+        [
+          'This is NOT a token permission issue.',
+          '',
+          'Most common causes:',
+          '  1. You opened this file via file:// — try serving it via a local server',
+          '     (drag it into a tab that already has http:// in the URL bar,',
+          '     or run: python3 -m http.server 8080 and open localhost:8080)',
+          '  2. Ad blocker / browser extension blocking the request',
+          '  3. No internet connection',
+          '  4. Corporate firewall blocking graph.facebook.com',
+          '',
+          'Quick test: open this URL in a new tab (replace TOKEN with yours):',
+          'https://graph.facebook.com/v19.0/me?access_token=TOKEN'
+        ]
+      );
+      return;
+    }
+
+    if (d.error) {
+      // Facebook returned an error — token problem
+      const code = d.error.code;
+      showAcctError(
+        `❌ Token error (code ${code}): ${d.error.message}`,
+        [
+          code === 190 ? 'Your token has expired. Generate a new one.' : '',
+          code === 10  ? 'Token is missing required permissions.' : '',
+          '',
+          'Fix: Go to developers.facebook.com/tools/explorer',
+          '  → Generate Access Token',
+          '  → Grant: ads_read · ads_management · pages_read_engagement',
+          '  → Copy the full token and paste it again'
+        ].filter(Boolean)
+      );
+      return;
+    }
+
+    // Token valid ✓
+    wrap.innerHTML = `<div class="spin-row" style="color:var(--lime)">✓ Token valid — logged in as ${d.name || d.id}. Fetching ad accounts…</div>`;
+
+  } catch(e) {
+    showAcctError('Unexpected error during token check: ' + e.message, []);
+    return;
+  }
+
+  // ── Step B: fetch ad accounts ─────────────────────────────────
+  await new Promise(res => setTimeout(res, 400)); // small pause so user reads success
+  try {
+    // Note: removed amount_spent — it requires business_management permission
+    const url = `https://graph.facebook.com/v19.0/me/adaccounts?fields=id,name,account_status,currency&limit=50&access_token=${encodeURIComponent(FB_TOKEN)}`;
+    const r = await fetch(url);
+    const d = await r.json();
+
+    if (d.error) throw new Error(`Facebook API: ${d.error.message} (code ${d.error.code})`);
+
+    fetchedAccts = d.data || [];
+
+    if (!fetchedAccts.length) {
+      showAcctError(
+        '⚠️  No ad accounts found on this token.',
+        [
+          'Your token is valid but the user has no ad accounts.',
+          'If you manage accounts through a Business Manager, make sure',
+          'the token is generated from an account that has access.',
+          '',
+          'Also check: your token needs ads_read permission.',
+        ]
+      );
+      return;
+    }
+
+    const statusLabel = { 1:'Active', 2:'Disabled', 3:'Unsettled', 7:'Pending', 9:'In Grace', 101:'Temp Off', 201:'Closed' };
+    wrap.innerHTML = `<div class="acct-list">${fetchedAccts.map(a => `
+      <div class="acct-card" id="ac_${a.id}" onclick="pickAcct('${a.id}')">
+        <input type="radio" name="acct" />
+        <div class="acct-card-info">
+          <div class="acct-card-name">${a.name || 'Unnamed Account'}</div>
+          <div class="acct-card-sub">${a.id} · ${a.currency || '?'}</div>
+        </div>
+        <span class="acct-status ${a.account_status === 1 ? 'active' : ''}">${statusLabel[a.account_status] || 'Status ' + a.account_status}</span>
+      </div>`).join('')}
+    </div>`;
+
+    if (fetchedAccts.length === 1) pickAcct(fetchedAccts[0].id);
+
+  } catch(e) {
+    showAcctError('Failed to load ad accounts: ' + e.message, [
+      'Try going back and re-pasting your token.',
+      'Make sure ads_read is ticked when generating the token.'
+    ]);
+  }
+}
+
+function showAcctError(headline, lines) {
+  const wrap = document.getElementById('acct-wrap');
+  const errDiv = document.getElementById('acct-err');
+  wrap.innerHTML = '';
+  errDiv.innerHTML = `<div style="color:var(--rose);margin-bottom:8px;font-weight:600">${headline}</div>` +
+    lines.map(l => l ? `<div style="color:var(--t3)">${l}</div>` : '<br>').join('');
+  errDiv.style.display = 'block';
+}
+
+function pickAcct(id) {
+  selectedAcctId = id;
+  document.querySelectorAll('.acct-card').forEach(el => { el.classList.remove('sel'); el.querySelector('input').checked = false; });
+  const el = document.getElementById('ac_' + id);
+  if (el) { el.classList.add('sel'); el.querySelector('input').checked = true; }
+}
+
+// Period in setup
+function pickPreset(val, label, btn) {
+  document.querySelectorAll('#sp2 .chip').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('custom-wrap').style.display = val === 'custom' ? 'block' : 'none';
+  if (val !== 'custom') {
+    PERIOD = { preset: val, label, from: null, to: null };
+    document.getElementById('period-preview').textContent = 'Period: ' + label;
+  } else {
+    PERIOD.preset = 'custom';
+    document.getElementById('period-preview').textContent = 'Period: Custom (pick dates above)';
+  }
+}
+
+function updateTopbar() {
+  document.getElementById('modeTag').textContent = 'LIVE';
+  document.getElementById('acctTag').textContent = ACCT_NAME;
+  document.getElementById('periodTag').textContent = '📅 ' + PERIOD.label;
+  document.getElementById('cur-period-lbl').textContent = 'Current: ' + PERIOD.label;
+}
+
+// ─── Date modal ────────────────────────────────────────────────────────────
+function quickPeriod(preset, label, btn) {
+  PERIOD = { preset, label, from: null, to: null };
+  document.querySelectorAll('#dateModal .chip').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('periodTag').textContent = '📅 ' + label;
+  document.getElementById('cur-period-lbl').textContent = 'Current: ' + label;
+  document.getElementById('dateModal').classList.remove('open');
+  pb(); pr(`✓ Period: ${label}.`, 'ok');
+}
+
+function applyCustomPeriod() {
+  const f = document.getElementById('dm-from').value, t = document.getElementById('dm-to').value;
+  if (!f || !t) { alert('Please pick both dates.'); return; }
+  if (f > t) { alert('From must be before To.'); return; }
+  const label = `${f} → ${t}`;
+  PERIOD = { preset: null, label, from: f, to: t };
+  document.getElementById('periodTag').textContent = '📅 ' + label;
+  document.getElementById('cur-period-lbl').textContent = 'Current: ' + label;
+  document.getElementById('dateModal').classList.remove('open');
+  pb(); pr(`✓ Period: ${label}.`, 'ok');
+}
+
+// ─── Output helpers ────────────────────────────────────────────────────────
+const $out = document.getElementById('out'), $cin = document.getElementById('cin'), $run = document.getElementById('runBtn');
+const pr = (t, cls='sys') => { const d = document.createElement('div'); d.className = 'ln ' + cls; d.textContent = t; $out.appendChild(d); scroll(); return d; };
+const ph = h => { const d = document.createElement('div'); d.innerHTML = h; $out.appendChild(d); scroll(); };
+const pb = () => pr('', 'blank');
+const scroll = () => { $out.scrollTop = $out.scrollHeight; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function waitLn(msg) {
+  const d = document.createElement('div'); d.className = 'ln wait';
+  d.innerHTML = `<span style="display:inline-block;width:10px;height:10px;border:1.5px solid rgba(255,255,255,.1);border-top-color:var(--lime);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:7px"></span>${msg}`;
+  $out.appendChild(d); scroll(); return d;
+}
+function clearOut() { $out.innerHTML = ''; }
+
+// ─── Boot ──────────────────────────────────────────────────────────────────
+function boot() {
+  pb();
+  pr('╔══════════════════════════════════════════════════════════════╗', 'head');
+  pr('║   FACEBOOK INTELLIGENCE TERMINAL  ·  Graph API v19.0        ║', 'head');
+  pr('╚══════════════════════════════════════════════════════════════╝', 'head');
+  pb();
+  pr(`  account  : ${ACCT_NAME} (${AD_ACCOUNT})`, 'ok');
+  pr(`  period   : ${PERIOD.label}`, 'sys');
+  pr(`  ai       : ${CLAUDE_KEY ? 'Claude Sonnet — ready' : 'not connected (add key in ⚙ Setup)'}`, CLAUDE_KEY ? 'ok' : 'wait');
+  pb();
+  pr('  HOW COMMENTS WORK:', 'head');
+  pr('  Each active ad has a "post" behind it. We resolve that post ID from', 'sys');
+  pr('  the ad creative (effective_object_story_id), then call /{post_id}/comments', 'sys');
+  pr('  using your user token with pages_read_engagement permission.', 'sys');
+  pr('  This gives you real ad comments — not organic page posts.', 'sys');
+  pb();
+  pr('  Try: "show campaigns"  ·  "pull all ad comments"  ·  "ad breakdown"', 'sys');
+  pb();
+}
+
+// ─── Input ─────────────────────────────────────────────────────────────────
+$cin.addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+function fill(el) { $cin.value = el.textContent.trim(); $cin.focus(); }
+function go(cmd) { $cin.value = cmd; run(); }
+
+async function run() {
+  const cmd = $cin.value.trim(); if (!cmd) return;
+  if (!FB_TOKEN) { pb(); pr('$ ' + cmd, 'cmd'); pr('⚠️  Not connected. Click ⚙ Setup to connect.', 'wait'); return; }
+  $cin.value = ''; $run.disabled = true;
+  pb(); pr('$ ' + cmd, 'cmd');
+  await route(cmd.toLowerCase());
+  $run.disabled = false; $cin.focus();
+}
+
+// ─── Router ────────────────────────────────────────────────────────────────
+async function route(cmd) {
+  if (cmd === 'help' || cmd === '?') { showHelp(); return; }
+  if (cmd === 'clear' || cmd === 'cls') { clearOut(); return; }
+  if (cmd.includes('set period') || cmd.includes('change period')) { parsePeriod(cmd); return; }
+  const pm = {'last 7':['last_7d','Last 7 days'],'last 14':['last_14d','Last 14 days'],'last 30':['last_30d','Last 30 days'],'last 60':['last_60d','Last 60 days'],'last 90':['last_90d','Last 90 days'],'this month':['this_month','This month'],'last month':['last_month','Last month']};
+  for (const [k,[p,l]] of Object.entries(pm)) { if (cmd.includes(k)) { PERIOD={preset:p,label:l,from:null,to:null}; document.getElementById('periodTag').textContent='📅 '+l; pr(`✓ Period: ${l}.`,'ok'); return; } }
+  if ((cmd.includes('campaign')||cmd.includes('show all'))&&!cmd.includes('comment')) { await showCampaigns(); return; }
+  if (cmd.includes('ad breakdown')||cmd.includes('ad level')||cmd.includes('top ad')) { await showAdBreakdown(); return; }
+  if (cmd.includes('daily')||cmd.includes('trend')) { await showDailyTrend(); return; }
+  if (cmd.includes('reaction')) { await showReactions(); return; }
+  if ((cmd.includes('comment')||cmd.includes('pull'))&&!cmd.includes('sentiment')) { await pullAdComments(cmd); return; }
+  if (cmd.includes('sentiment')||cmd.includes('analys')) { await runSentiment(); return; }
+  if (cmd.includes('negative')) { filterComments('negative'); return; }
+  if (cmd.includes('reply')) { filterComments('needs_reply'); return; }
+  if (cmd.includes('compare')) { await showAdBreakdown(); return; }
+  if (cmd.includes('report')) { await genReport(); return; }
+  await aiAnswer(cmd);
+}
+
+function parsePeriod(cmd) {
+  const iso = cmd.match(/(\d{4}-\d{2}-\d{2}).*?(\d{4}-\d{2}-\d{2})/);
+  if (iso) { const[,f,t]=iso; PERIOD={preset:null,label:`${f} → ${t}`,from:f,to:t}; document.getElementById('periodTag').textContent='📅 '+PERIOD.label; pr(`✓ Period: ${f} → ${t}.`,'ok'); return; }
+  const mn={january:'01',february:'02',march:'03',april:'04',may:'05',june:'06',july:'07',august:'08',september:'09',october:'10',november:'11',december:'12'};
+  const m=/(\w+)\s+(\d{1,2})\s+(?:to|–|-)\s+(\w+)\s+(\d{1,2})/i.exec(cmd);
+  if (m) { const[,m1,d1,m2,d2]=m; const mm1=mn[m1.toLowerCase()],mm2=mn[m2.toLowerCase()]; if(mm1&&mm2){const y=new Date().getFullYear();const f=`${y}-${mm1}-${d1.padStart(2,'0')}`,t=`${y}-${mm2}-${d2.padStart(2,'0')}`;PERIOD={preset:null,label:`${f} → ${t}`,from:f,to:t};document.getElementById('periodTag').textContent='📅 '+PERIOD.label;pr(`✓ Period: ${f} → ${t}.`,'ok');return;} }
+  pr('ℹ️  Click 📅 in top bar, or: "set period 2026-04-01 to 2026-04-22"', 'wait');
+}
+
+// ─── API helpers ───────────────────────────────────────────────────────────
+function periodP() {
+  if (PERIOD.from && PERIOD.to) return `since=${PERIOD.from}&until=${PERIOD.to}`;
+  return `date_preset=${PERIOD.preset || 'last_30d'}`;
+}
+
+async function fbGet(path, params = {}) {
+  const url = new URL(GRAPH + path);
+  // Always set token via searchParams (handles encoding automatically)
+  url.searchParams.set('access_token', FB_TOKEN);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, String(v)));
+  let r, d;
+  try {
+    r = await fetch(url.toString());
+  } catch(netErr) {
+    throw new Error('Network error — could not reach Facebook. Check your internet, ad blockers, or try opening via http:// instead of file://');
+  }
+  try { d = await r.json(); } catch(e) { throw new Error('Invalid JSON from Facebook API'); }
+  if (d.error) throw new Error(`${d.error.message} (code ${d.error.code})`);
+  return d;
+}
+
+async function insightsGet(level, extraFields = '') {
+  const baseFields = level === 'ad'
+    ? 'ad_id,ad_name,campaign_name,adset_name,spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,cost_per_action_type'
+    : 'campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions';
+  const fields = extraFields ? baseFields + ',' + extraFields : baseFields;
+  const p = { fields, level };
+  if (PERIOD.from && PERIOD.to) { p.since = PERIOD.from; p.until = PERIOD.to; }
+  else p.date_preset = PERIOD.preset || 'last_30d';
+  const d = await fbGet(`/${AD_ACCOUNT}/insights`, p);
+  return d?.data || [];
+}
+
+// ─── Get post IDs for all ads ─────────────────────────────────────────────
+// Reads ad creatives to get effective_object_story_id (the page post behind the ad).
+// Gets ALL statuses so we don't miss any ads that had comments.
+async function getAdPostMap() {
+  const map = {}; // { postId: { adNames: [], adIds: [] } }
+  let after = '';
+  let pageN = 0;
+  let totalAds = 0;
+  let noPostId = 0;
+
+  do {
+    const p = {
+      // No status filter — get everything: ACTIVE, PAUSED, DELETED, ARCHIVED
+      fields: 'id,name,effective_status,creative{id,effective_object_story_id,object_story_id}',
+      limit: 100
+    };
+    if (after) p['after'] = after;
+    const d = await fbGet(`/${AD_ACCOUNT}/ads`, p);
+    const ads = d?.data || [];
+    totalAds += ads.length;
+
+    for (const ad of ads) {
+      const c = ad.creative || {};
+      const postId = c.effective_object_story_id || c.object_story_id;
+      if (!postId) { noPostId++; continue; }
+      if (!map[postId]) map[postId] = { adNames: [], adIds: [] };
+      if (!map[postId].adNames.includes(ad.name)) map[postId].adNames.push(ad.name);
+      map[postId].adIds.push(ad.id);
+    }
+
+    after = (d?.paging?.cursors?.after && d?.paging?.next) ? d.paging.cursors.after : '';
+    pageN++;
+  } while (after && pageN < 20);
+
+  // Diagnostic: log to terminal
+  pr(`  → Scanned ${totalAds} ads total`, 'sys');
+  pr(`  → ${Object.keys(map).length} unique post IDs found, ${noPostId} ads had no post ID`, noPostId > 0 ? 'wait' : 'sys');
+
+  return map;
+}
+
+// ─── JSONP helper ─────────────────────────────────────────────────────────
+// Uses <script> tags to bypass any CORS/SameSite issues. Works on file://, http://, anywhere.
+function jsonpGet(url) {
+  return new Promise(function(resolve, reject) {
+    var cbName = '_jcb' + Date.now() + Math.random().toString(36).slice(2);
+    var sep = url.includes('?') ? '&' : '?';
+    var fullUrl = url + sep + 'callback=' + cbName + '&access_token=' + encodeURIComponent(FB_TOKEN);
+
+    var timer = setTimeout(function() {
+      cleanup();
+      reject(new Error('JSONP timeout for: ' + url.slice(0, 80)));
+    }, 20000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[cbName] = function(data) {
+      cleanup();
+      if (data && data.error) {
+        reject(new Error(data.error.message + ' (code ' + data.error.code + ')'));
+      } else {
+        resolve(data);
+      }
+    };
+
+    var script = document.createElement('script');
+    script.src = fullUrl;
+    script.onerror = function() { cleanup(); reject(new Error('Script load failed: ' + url.slice(0, 60))); };
+    document.head.appendChild(script);
+  });
+}
+
+// ─── Fetch ad post comments via JSONP (works from any context) ─────────────
+async function fetchPostComments(postId, label, maxPerPost) {
+  maxPerPost = maxPerPost || 500;
+  const comments = [];
+  // First page — build URL manually for JSONP
+  var fields = 'message,from{name,id},created_time,like_count,comment_count,parent';
+  var firstUrl = GRAPH + '/' + postId + '/comments?fields=' + fields + '&filter=stream&limit=100';
+
+  var d;
+  try {
+    d = await jsonpGet(firstUrl);
+  } catch(e) {
+    throw new Error(e.message);
+  }
+
+  function extractComments(data) {
+    for (var i = 0; i < (data.data || []).length; i++) {
+      var c = data.data[i];
+      if (!c.message || !c.message.trim()) continue;
+      comments.push({
+        id: c.id,
+        text: c.message.trim(),
+        author: (c.from && c.from.name) || 'Anonymous',
+        author_id: (c.from && c.from.id) || '',
+        date: (c.created_time || '').slice(0, 10),
+        likes: c.like_count || 0,
+        replies: c.comment_count || 0,
+        is_reply: !!c.parent,
+        post_id: postId,
+        ad_label: label,
+        ad: label,
+        ad_name: label,
+        sentiment: null,
+        needs_reply: null
+      });
+    }
+  }
+
+  extractComments(d);
+
+  // Paginate using the `after` cursor (not next URL, to keep JSONP working)
+  var after = d.paging && d.paging.cursors && d.paging.cursors.after;
+  var pages = 0;
+  while (after && comments.length < maxPerPost && pages < 20) {
+    try {
+      var pageUrl = GRAPH + '/' + postId + '/comments?fields=' + fields + '&filter=stream&limit=100&after=' + encodeURIComponent(after);
+      var pd = await jsonpGet(pageUrl);
+      extractComments(pd);
+      after = pd.paging && pd.paging.cursors && pd.paging.next ? pd.paging.cursors.after : null;
+      pages++;
+    } catch(e) {
+      break; // stop pagination on error
+    }
+  }
+
+  return comments;
+}
+
+// ─── CAMPAIGNS ─────────────────────────────────────────────────────────────
+async function showCampaigns() {
+  const w = waitLn(`Fetching campaigns · ${PERIOD.label}…`);
+  let rows = [];
+  try {
+    const data = await insightsGet('campaign');
+    rows = data.map(c => ({
+      name: c.campaign_name,
+      spend: +c.spend||0, impr: +c.impressions||0, clicks: +c.clicks||0,
+      ctr: (+c.ctr||0).toFixed(2), cpc: (+c.cpc||0).toFixed(2), cpm: (+c.cpm||0).toFixed(2),
+      reach: +c.reach||0,
+      convs: +(c.actions?.find(a => a.action_type?.includes('conversion'))?.value)||0
+    }));
+  } catch(e) { w.remove(); pr('❌ ' + e.message, 'err'); return; }
+  w.remove();
+  if (!rows.length) { pr('ℹ️  No campaign data for this period.', 'wait'); return; }
+  const tS=sum(rows,'spend'),tI=sum(rows,'impr'),tC=sum(rows,'clicks'),tV=sum(rows,'convs');
+  const cid = 'c'+(++chartN);
+  ph(`<div class="block">
+    <div class="bh"><div class="bh-title">📊 Campaign Performance</div><div class="bh-meta">${PERIOD.label} · ${rows.length} campaigns</div></div>
+    <div class="bb">
+      <div class="kpis g5">
+        <div class="kp lime"><div class="kp-l">SPEND</div><div class="kp-v">$${fmt(tS)}</div><div class="kp-s">AUD</div></div>
+        <div class="kp sky"><div class="kp-l">IMPRESSIONS</div><div class="kp-v">${(tI/1e6).toFixed(2)}M</div></div>
+        <div class="kp"><div class="kp-l">CLICKS</div><div class="kp-v">${fmt(tC)}</div><div class="kp-s">CTR ${tI?(tC/tI*100).toFixed(2):0}%</div></div>
+        <div class="kp teal"><div class="kp-l">CONVERSIONS</div><div class="kp-v">${fmt(tV)}</div><div class="kp-s">${tV?'$'+(tS/tV).toFixed(2)+'/conv':'—'}</div></div>
+        <div class="kp amb"><div class="kp-l">AVG CPM</div><div class="kp-v">$${tI?(tS/tI*1000).toFixed(2):'—'}</div></div>
+      </div>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>Campaign</th><th>Spend</th><th>Impr</th><th>Clicks</th><th>CTR</th><th>CPC</th><th>CPM</th><th>Reach</th><th>Convs</th></tr></thead>
+        <tbody>${rows.map(c=>`<tr><td>${c.name}</td><td>$${fmt(c.spend)}</td><td>${fmtK(c.impr)}</td><td>${fmt(c.clicks)}</td><td>${c.ctr}%</td><td>$${c.cpc}</td><td>$${c.cpm}</td><td>${fmtK(c.reach)}</td><td>${fmt(c.convs)}</td></tr>`).join('')}</tbody>
+      </table></div>
+      <div class="ch-wrap" style="height:170px"><canvas id="${cid}"></canvas></div>
+    </div>
+  </div>`);
+  mkChart(cid,'bar',rows.map(r=>r.name.slice(0,25)),
+    [{l:'Spend',d:rows.map(r=>r.spend),bg:'rgba(56,189,248,.55)',y:'y'},
+     {l:'Convs',d:rows.map(r=>r.convs),bg:'rgba(163,230,53,.55)',y:'y2'}],true);
+  pr(`✓ ${rows.length} campaigns loaded.`, 'ok');
+}
+
+// ─── AD BREAKDOWN ──────────────────────────────────────────────────────────
+async function showAdBreakdown() {
+  const w = waitLn(`Fetching ad-level data · ${PERIOD.label}…`);
+  let rows = [];
+  try {
+    const data = await insightsGet('ad');
+    rows = data.map(a => ({
+      name: a.ad_name,
+      spend: +a.spend||0, impr: +a.impressions||0, clicks: +a.clicks||0,
+      ctr: (+a.ctr||0).toFixed(2), cpc: (+a.cpc||0).toFixed(2),
+      convs: +(a.actions?.find(x=>x.action_type?.includes('conversion'))?.value)||0,
+      reactions: +(a.actions?.find(x=>x.action_type==='post_reaction')?.value)||0,
+      comments: +(a.actions?.find(x=>x.action_type==='comment')?.value)||0,
+      shares: +(a.actions?.find(x=>x.action_type==='post')?.value)||0
+    }));
+    cachedAds = rows;
+  } catch(e) { w.remove(); pr('❌ ' + e.message, 'err'); return; }
+  w.remove();
+  if (!rows.length) { pr('ℹ️  No ad data for this period.', 'wait'); return; }
+  const sorted = [...rows].sort((a,b)=>b.clicks-a.clicks);
+  const maxC = Math.max(...rows.map(r=>r.clicks),1);
+  const cid = 'c'+(++chartN);
+  ph(`<div class="block">
+    <div class="bh"><div class="bh-title">🎯 Ad-Level Breakdown</div><div class="bh-meta">${PERIOD.label} · ${rows.length} ads · sorted by clicks</div></div>
+    <div class="bb">
+      ${sorted.map(a=>`<div class="bar-row"><div class="bar-lbl">${a.name}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(a.clicks/maxC*100)}%"></div></div><div class="bar-val">${fmtK(a.clicks)}</div></div>`).join('')}
+      <div class="tbl-wrap" style="margin-top:12px"><table class="tbl">
+        <thead><tr><th>Ad Name</th><th>Spend</th><th>Clicks</th><th>CTR</th><th>CPC</th><th>Convs</th><th>👍 React</th><th>💬 Cmts</th><th>↗ Shares</th></tr></thead>
+        <tbody>${sorted.map(a=>`<tr><td>${a.name}</td><td>$${fmt(a.spend)}</td><td>${fmt(a.clicks)}</td><td>${a.ctr}%</td><td>$${a.cpc}</td><td>${fmt(a.convs)}</td><td>${fmt(a.reactions)}</td><td>${a.comments}</td><td>${a.shares}</td></tr>`).join('')}</tbody>
+      </table></div>
+      <div class="ch-wrap" style="height:150px"><canvas id="${cid}"></canvas></div>
+    </div>
+  </div>`);
+  mkChart(cid,'bar',rows.map(r=>r.name.slice(0,20)),
+    [{l:'Reactions',d:rows.map(r=>r.reactions),bg:'rgba(251,191,36,.6)'},
+     {l:'Comments',d:rows.map(r=>r.comments),bg:'rgba(163,230,53,.65)'}],false);
+  pr('✓ Reactions & comment counts from insights actions field.','ok');
+}
+
+// ─── DAILY TREND ───────────────────────────────────────────────────────────
+async function showDailyTrend() {
+  const w = waitLn('Fetching daily data…');
+  let rows = [];
+  try {
+    const p = { fields:'spend,impressions,clicks,actions', level:'account', time_increment:1 };
+    if (PERIOD.from&&PERIOD.to) { p.since=PERIOD.from; p.until=PERIOD.to; } else p.date_preset=PERIOD.preset||'last_30d';
+    const d = await fbGet(`/${AD_ACCOUNT}/insights`, p);
+    rows = (d?.data||[]).map(r=>({ date:r.date_start?.slice(5), spend:+r.spend||0, clicks:+r.clicks||0, convs:+(r.actions?.find(a=>a.action_type?.includes('conversion'))?.value)||0 }));
+  } catch(e) { w.remove(); pr('❌ '+e.message,'err'); return; }
+  w.remove();
+  if (!rows.length) { pr('ℹ️  No daily data for this period.','wait'); return; }
+  const cid='c'+(++chartN);
+  ph(`<div class="block"><div class="bh"><div class="bh-title">📈 Daily Spend + Conversions</div><div class="bh-meta">${PERIOD.label}</div></div><div class="bb"><div class="ch-wrap" style="height:200px"><canvas id="${cid}"></canvas></div></div></div>`);
+  setTimeout(()=>{new Chart(document.getElementById(cid),{type:'bar',data:{labels:rows.map(r=>r.date),datasets:[{label:'Spend',data:rows.map(r=>r.spend),backgroundColor:'rgba(56,189,248,.5)',borderRadius:2,yAxisID:'y',order:2},{label:'Convs',data:rows.map(r=>r.convs),type:'line',borderColor:'rgba(163,230,53,.9)',backgroundColor:'rgba(163,230,53,.07)',fill:true,tension:.4,pointRadius:2,borderWidth:2,yAxisID:'y2',order:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tc,font:{size:10,family:'IBM Plex Mono'}}}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:16},border:{color:gc}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>'$'+v},border:{color:'transparent'}},y2:{position:'right',grid:{display:false},ticks:{color:tc,font:{size:10}},border:{color:'transparent'}}}}});},80);
+  pr(`✓ ${rows.length} days.`,'ok');
+}
+
+// ─── REACTIONS ─────────────────────────────────────────────────────────────
+async function showReactions() {
+  const w = waitLn('Fetching reaction data from insights…');
+  let R = {LIKE:0,LOVE:0,WOW:0,HAHA:0,SAD:0,ANGRY:0};
+  try {
+    const data = await insightsGet('ad');
+    for (const a of data) {
+      const rTotal = +(a.actions?.find(x=>x.action_type==='post_reaction')?.value)||0;
+      // Reactions by type come from cost_per_action_type / actions expanded
+      const byType = a.actions?.filter(x=>x.action_type?.startsWith('post_reaction:')) || [];
+      if (byType.length) {
+        byType.forEach(b => { const t=b.action_type.split(':')[1]?.toUpperCase(); if(R[t]!==undefined) R[t]+=+b.value||0; });
+      } else { R.LIKE += rTotal; } // fallback: count all as LIKE
+    }
+  } catch(e) { w.remove(); pr('❌ '+e.message,'err'); return; }
+  w.remove();
+  const em={LIKE:'👍',LOVE:'❤️',WOW:'😮',HAHA:'😂',SAD:'😢',ANGRY:'😡'};
+  const tot=Object.values(R).reduce((s,v)=>s+v,0), maxR=Math.max(...Object.values(R),1);
+  ph(`<div class="block">
+    <div class="bh"><div class="bh-title">❤️ Reactions Breakdown</div><div class="bh-meta">${tot.toLocaleString()} total reactions · ${PERIOD.label}</div></div>
+    <div class="bb">
+      <div class="react-grid">${Object.entries(R).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="react-box"><span class="react-emoji">${em[k]}</span><div><div class="react-n">${v.toLocaleString()}</div><div class="react-lbl">${k}</div></div></div>`).join('')}</div>
+      ${Object.entries(R).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="bar-row"><div class="bar-lbl">${em[k]} ${k}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxR*100)}%;background:var(--violet)"></div></div><div class="bar-val">${v.toLocaleString()}</div></div>`).join('')}
+    </div>
+  </div>`);
+  pr(`✓ ${tot.toLocaleString()} reactions.`,'ok');
+}
+
+// ─── PULL AD COMMENTS — the main fix ──────────────────────────────────────
+// Strategy:
+// 1. Get all ads from the ad account with their creative post IDs
+// 2. For each unique post ID, call /{post_id}/comments with user token
+// 3. User token with pages_read_engagement CAN read ad post comments
+//    when the user is an admin of the page running the ads
+async function pullAdComments(cmd) {
+  const adFilter = (() => {
+    const m = cmd.match(/ad\s*(?:0?(\d+)|named?\s+["']?([^"']+)["']?)/i);
+    return m ? (m[1] ? m[1] : m[2]) : null;
+  })();
+
+  pr('  → Step 1: Resolving post IDs from ad creatives…', 'sys');
+  const w = waitLn('Fetching all ads and their creative post IDs…');
+
+  let postMap = {};
+  try {
+    postMap = await getAdPostMap();
+  } catch(e) {
+    w.remove(); pr('❌ Failed to get ad creatives: ' + e.message, 'err');
+    pr('  Make sure your token has ads_read and ads_management permissions.', 'sys');
+    return;
+  }
+  w.remove();
+
+  const entries = Object.entries(postMap);
+  if (!entries.length) {
+    pr('⚠️  No post IDs found on any ad creative.', 'wait');
+    pr('  This can happen when:', 'sys');
+    pr('  · Ads have not been published yet (draft status)', 'sys');
+    pr('  · All ads in the account are completely new with no post attached', 'sys');
+    pr('  · effective_object_story_id is not populated (unusual)', 'sys');
+    pr('  Try running "ad breakdown" first to confirm ads exist in this period.', 'sys');
+    return;
+  }
+
+  pr(`  → Found ${entries.length} unique ad post(s) across ${Object.values(postMap).reduce((s,v)=>s+v.adIds.length,0)} ads.`, 'ok');
+
+  // Filter by ad name if requested
+  const toFetch = adFilter
+    ? entries.filter(([,v]) => v.adNames.some(n => n.toLowerCase().includes(adFilter.toLowerCase())))
+    : entries;
+
+  if (!toFetch.length) {
+    pr(`ℹ️  No ads matched filter "${adFilter}". Fetching all.`, 'wait');
+    toFetch.push(...entries);
+  }
+
+  pr(`  → Step 2: Fetching comments from ${toFetch.length} post(s) using your user token…`, 'sys');
+  pr(`  → Token needs "pages_read_engagement" — fetching now…`, 'sys');
+
+  const allComments = [];
+  let failCount = 0;
+
+  for (const [postId, meta] of toFetch) {
+    const label = meta.adNames.join(' / ').slice(0, 60);
+    const w2 = waitLn(`  Fetching: ${label} (post ${postId})`);
+    try {
+      const comments = await fetchPostComments(postId, label);
+      w2.remove();
+      if (comments.length) {
+        pr(`  ✓ ${comments.length} comment(s) — ${label}`, 'ok');
+      } else {
+        pr(`  · 0 comments — ${label}`, 'sys');
+      }
+      allComments.push(...comments);
+    } catch(e) {
+      w2.remove();
+      failCount++;
+      pr(`  ⚠️  ${label}: ${e.message}`, 'wait');
+      // Check if it's a permission error
+      if (e.message.includes('permission') || e.message.includes('OAuthException') || e.message.includes('(code 10)') || e.message.includes('(code 200)')) {
+        pr('', 'blank');
+        pr('  ─── PERMISSION ISSUE DETECTED ──────────────────────────────────', 'head');
+        pr('  Your user token needs "pages_read_engagement" to read ad post', 'wait');
+        pr('  comments. To fix:', 'wait');
+        pr('  1. Go to developers.facebook.com/tools/explorer', 'sys');
+        pr('  2. Re-generate your token', 'sys');
+        pr('  3. Make sure you tick "pages_read_engagement" in permissions', 'sys');
+        pr('  4. Re-run Setup (⚙) with the new token', 'sys');
+        pr('  ─────────────────────────────────────────────────────────────────', 'head');
+        break;
+      }
+    }
+    await sleep(220);
+  }
+
+  if (!allComments.length) {
+    pr('', 'blank');
+    pr('⚠️  No comments returned.', 'wait');
+    if (failCount === 0) {
+      pr('  The ads exist and post IDs were found, but the posts have 0 comments.', 'sys');
+      pr('  Check your ads on Facebook to confirm comments exist.', 'sys');
+    }
+    return;
+  }
+
+  cachedComments = [...allComments];
+  renderComments(allComments, adFilter ? `Ad filter: ${adFilter}` : 'All Ads');
+}
+
+// ─── Render comments ────────────────────────────────────────────────────────
+function renderComments(comments, title) {
+  const nrCount = comments.filter(c => c.needs_reply).length;
+  const topLevel = comments.filter(c => !c.is_reply);
+  const replies = comments.filter(c => c.is_reply);
+  ph(`<div class="block">
+    <div class="bh">
+      <div class="bh-title">💬 Ad Comments — ${title}</div>
+      <div class="bh-meta">${comments.length} total · ${topLevel.length} top-level · ${replies.length} replies${nrCount?' · '+nrCount+' need reply':''}</div>
+    </div>
+    <div class="bb">
+      ${comments.slice(0,100).map(c => {
+        const s = c.sentiment;
+        const cls = s==='positive'?'pos':s==='negative'?'neg':s==='neutral'?'neu':'unk';
+        return `<div class="cc ${cls}">
+          <div class="cc-meta">
+            <span>👤 ${c.author}</span>
+            <span>${(c.ad_name||'—').slice(0,45)}</span>
+            ${c.date?`<span>📅 ${c.date}</span>`:''}
+            <span>👍 ${c.likes||0}</span>
+            ${c.is_reply?`<span style="color:var(--violet)">↩ reply</span>`:''}
+          </div>
+          <div class="cc-txt">${c.text}</div>
+          <div class="cc-foot">
+            <span class="pill ${cls}">${s||'unanalysed'}</span>
+            ${c.needs_reply?'<span class="pill nr">🔔 NEEDS REPLY</span>':''}
+          </div>
+        </div>`;
+      }).join('')}
+      ${comments.length>100?`<div style="text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--t3);padding:10px 0">Showing 100 of ${comments.length} — use "generate report" to export all</div>`:''}
+    </div>
+  </div>`);
+  pr(`✓ ${comments.length} comment(s) · ${topLevel.length} top-level · ${replies.length} replies · ${nrCount} flagged for reply.`, 'ok');
+  if (!nrCount && comments.length) pr('  Run "analyse sentiment" to auto-tag sentiment & flag replies needed.', 'sys');
+}
+
+function filterComments(type) {
+  if (!cachedComments.length) { pr('ℹ️  Run "pull all ad comments" first.', 'wait'); return; }
+  const filtered = type === 'needs_reply'
+    ? cachedComments.filter(c => c.needs_reply)
+    : cachedComments.filter(c => c.sentiment === type);
+  if (!filtered.length) { pr(`ℹ️  No ${type.replace('_',' ')} comments. Run "analyse sentiment" first.`, 'wait'); return; }
+  renderComments(filtered, type === 'needs_reply' ? 'Needs Reply' : type.charAt(0).toUpperCase()+type.slice(1));
+}
+
+// ─── SENTIMENT ─────────────────────────────────────────────────────────────
+async function runSentiment() {
+  if (!cachedComments.length) { pr('ℹ️  Run "pull all ad comments" first.', 'wait'); return; }
+  if (!CLAUDE_KEY) { pr('⚠️  Add Anthropic API key in ⚙ Setup for AI analysis.', 'wait'); return; }
+  const src = cachedComments;
+  const w = waitLn(`Claude AI analysing ${src.length} comment(s)…`);
+  const BATCH = 35;
+  for (let i = 0; i < src.length; i += BATCH) {
+    const batch = src.slice(i, i + BATCH);
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json','x-api-key':CLAUDE_KEY,'anthropic-version':'2023-06-01' },
+        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2000, messages:[{ role:'user', content:`Analyse these ${batch.length} Facebook ad comments for Minerals Council of Australia. Return ONLY a JSON array, no markdown. Each item: {"sentiment":"positive"|"neutral"|"negative","intent":"question"|"application"|"praise"|"complaint"|"share"|"other","needs_reply":true|false}\n\n${batch.map((c,j)=>`${j+1}. ${c.text}`).join('\n')}` }] })
+      });
+      const d = await r.json();
+      let raw = d.content?.[0]?.text || '[]';
+      raw = raw.replace(/```json|```/g,'').trim();
+      const tags = JSON.parse(raw);
+      tags.forEach((tag, j) => { if (src[i+j]) Object.assign(src[i+j], tag); });
+    } catch(e) { pr(`⚠️  Batch ${Math.floor(i/BATCH)+1} error: ${e.message}`, 'wait'); }
+    if (i+BATCH < src.length) await sleep(700);
+  }
+  w.remove();
+  const pos=src.filter(c=>c.sentiment==='positive').length, neu=src.filter(c=>c.sentiment==='neutral').length, neg=src.filter(c=>c.sentiment==='negative').length, nr=src.filter(c=>c.needs_reply).length, total=src.length;
+  const cid='c'+(++chartN);
+  ph(`<div class="block">
+    <div class="bh"><div class="bh-title">🤖 AI Sentiment Analysis</div><div class="bh-meta">${total} comments · Claude Sonnet 4.6</div></div>
+    <div class="bb">
+      <div class="kpis g3">
+        <div class="kp lime"><div class="kp-l">POSITIVE</div><div class="kp-v">${Math.round(pos/total*100)}%</div><div class="kp-s">${pos} comments</div></div>
+        <div class="kp sky"><div class="kp-l">NEUTRAL</div><div class="kp-v">${Math.round(neu/total*100)}%</div><div class="kp-s">${neu} comments</div></div>
+        <div class="kp rose"><div class="kp-l">NEGATIVE</div><div class="kp-v">${Math.round(neg/total*100)}%</div><div class="kp-s">${neg} · ${nr} need reply</div></div>
+      </div>
+      <div style="display:flex;height:4px;border-radius:2px;overflow:hidden;margin:4px 0 14px">
+        <div style="width:${Math.round(pos/total*100)}%;background:var(--lime)"></div>
+        <div style="width:${Math.round(neu/total*100)}%;background:var(--sky)"></div>
+        <div style="flex:1;background:var(--rose)"></div>
+      </div>
+      <div class="ch-wrap" style="height:150px"><canvas id="${cid}"></canvas></div>
+    </div>
+  </div>`);
+  setTimeout(()=>{new Chart(document.getElementById(cid),{type:'doughnut',data:{labels:['Positive','Neutral','Negative'],datasets:[{data:[pos,neu,neg],backgroundColor:['rgba(163,230,53,.75)','rgba(56,189,248,.65)','rgba(244,63,94,.7)'],borderColor:'#060708',borderWidth:3,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{color:tc,font:{size:11,family:'IBM Plex Mono'},boxWidth:10}}}}});},80);
+  pr(`✓ Analysis complete. ${nr} comment(s) need reply. Try "comments needing reply".`, 'ok');
+}
+
+// ─── REPORT ────────────────────────────────────────────────────────────────
+async function genReport() {
+  const w = waitLn('Building report…');
+  let camps=[], ads=[];
+  try {
+    camps = (await insightsGet('campaign')).map(c=>({name:c.campaign_name,spend:+c.spend||0,clicks:+c.clicks||0,ctr:(+c.ctr||0).toFixed(2),convs:+(c.actions?.find(a=>a.action_type?.includes('conversion'))?.value)||0}));
+    ads   = (await insightsGet('ad')).map(a=>({name:a.ad_name,spend:+a.spend||0,clicks:+a.clicks||0,ctr:(+a.ctr||0).toFixed(2),cpc:(+a.cpc||0).toFixed(2),convs:+(a.actions?.find(x=>x.action_type?.includes('conversion'))?.value)||0,reactions:+(a.actions?.find(x=>x.action_type==='post_reaction')?.value)||0,comments:+(a.actions?.find(x=>x.action_type==='comment')?.value)||0}));
+  } catch(e) { w.remove(); pr('❌ '+e.message,'err'); return; }
+  w.remove();
+  const tS=sum(camps,'spend'),tC=sum(camps,'clicks'),tV=sum(camps,'convs');
+  const cmtRows=cachedComments.slice(0,100).map(c=>`<tr><td>${c.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td><td>${c.author}</td><td>${c.date||''}</td><td>${c.likes||0}</td><td><span class="${c.sentiment==='positive'?'pos':c.sentiment==='negative'?'neg':'neu'}">${c.sentiment||'—'}</span></td><td>${c.needs_reply?'✓':''}</td></tr>`).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>FB Report — ${ACCT_NAME}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:system-ui,sans-serif;background:#fff;color:#1a1a1a;padding:40px;max-width:1000px;margin:0 auto}h1{font-size:24px;margin-bottom:6px}h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin:28px 0 10px;padding-bottom:5px;border-bottom:2px solid #000}.meta{font-size:11px;color:#666;margin-bottom:22px;font-family:monospace}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}.kp{background:#f9f9f9;border:1px solid #e0e0e0;border-radius:6px;padding:14px}.kv{font-size:22px;font-weight:700;margin-bottom:4px}.kl{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.05em}table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px}th{background:#f5f5f5;padding:7px 10px;text-align:left;font-size:10px;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid #ddd}td{padding:7px 10px;border-bottom:1px solid #f0f0f0;vertical-align:top}.pos{color:#166534;background:#dcfce7;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600}.neu{color:#1e40af;background:#dbeafe;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600}.neg{color:#991b1b;background:#fee2e2;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600}.footer{margin-top:36px;padding-top:12px;border-top:1px solid #ddd;font-size:10px;color:#999;font-family:monospace}</style></head><body>
+  <h1>Facebook Ads Intelligence Report</h1>
+  <div class="meta">${ACCT_NAME} (${AD_ACCOUNT}) · Period: ${PERIOD.label} · Generated ${new Date().toLocaleString()} · Facebook Graph API v19.0</div>
+  <div class="kpis"><div class="kp"><div class="kl">Spend</div><div class="kv">$${fmt(tS)}</div></div><div class="kp"><div class="kl">Clicks</div><div class="kv">${fmt(tC)}</div></div><div class="kp"><div class="kl">Conversions</div><div class="kv">${fmt(tV)}</div></div><div class="kp"><div class="kl">Ad Comments</div><div class="kv">${fmt(cachedComments.length)}</div></div></div>
+  <h2>Campaigns</h2><table><thead><tr><th>Campaign</th><th>Spend</th><th>Clicks</th><th>CTR</th><th>Convs</th></tr></thead><tbody>${camps.map(c=>`<tr><td>${c.name}</td><td>$${fmt(c.spend)}</td><td>${fmt(c.clicks)}</td><td>${c.ctr}%</td><td>${fmt(c.convs)}</td></tr>`).join('')}</tbody></table>
+  <h2>Ad Performance</h2><table><thead><tr><th>Ad</th><th>Spend</th><th>Clicks</th><th>CTR</th><th>CPC</th><th>Convs</th><th>Reactions</th><th>Comments</th></tr></thead><tbody>${ads.map(a=>`<tr><td>${a.name}</td><td>$${fmt(a.spend)}</td><td>${fmt(a.clicks)}</td><td>${a.ctr}%</td><td>$${a.cpc}</td><td>${fmt(a.convs)}</td><td>${fmt(a.reactions)}</td><td>${a.comments}</td></tr>`).join('')}</tbody></table>
+  ${cachedComments.length?`<h2>Ad Comments (${cachedComments.length} total)</h2><table><thead><tr><th style="width:45%">Comment</th><th>Author</th><th>Date</th><th>Likes</th><th>Sentiment</th><th>Reply?</th></tr></thead><tbody>${cmtRows}</tbody></table>`:''}
+  <div class="footer">Source: Facebook Graph API v19.0 · Ad comments via creative post IDs · No third-party layer · ${new Date().toLocaleString()}</div>
+  </body></html>`;
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([html],{type:'text/html'})); a.download=`fb-report-${Date.now()}.html`; a.click();
+  pr(`✓ Report downloaded (${camps.length} campaigns · ${ads.length} ads · ${cachedComments.length} comments).`,'ok');
+}
+
+async function aiAnswer(cmd) {
+  if (!CLAUDE_KEY) { pr('ℹ️  No Claude key — type "help" for commands.','wait'); return; }
+  const w = waitLn('Asking Claude…');
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':CLAUDE_KEY,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:250,messages:[{role:'user',content:`Facebook Ads terminal, account: ${ACCT_NAME}, period: ${PERIOD.label}. User asked: "${cmd}". Reply in 2-3 plain text sentences.`}]})});
+    const d = await r.json(); w.remove();
+    pr('AI: '+(d.content?.[0]?.text||'—'),'ai');
+  } catch(e) { w.remove(); pr('❌ '+e.message,'err'); }
+}
+
+function showHelp() {
+  pb();
+  pr('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━','head');
+  pr(' COMMANDS','head');
+  pr('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━','head');
+  [['show campaigns','Campaign metrics from Insights API'],
+   ['ad breakdown','Ad-level spend, clicks, CTR, reactions, comments'],
+   ['daily spend trend','Day-by-day spend + conversions chart'],
+   ['show reactions','Reaction type breakdown from insights'],
+   ['pull all ad comments','Fetch all comments on your ads (via post IDs)'],
+   ['analyse sentiment','Claude AI tags every comment + flags replies'],
+   ['negative comments','Filter to negative comments (post-sentiment)'],
+   ['comments needing reply','Reply queue (post-sentiment)'],
+   ['generate report','Download full HTML report'],
+   ['set period last 30 days','Change period (7/14/30/60/90d, this/last month)'],
+   ['set period April 1 to April 22','Named month range'],
+   ['set period 2026-04-01 to 2026-04-22','ISO date range'],
+   ['clear','Clear terminal'],
+  ].forEach(([c,d]) => pr(`  ${c.padEnd(36)} ${d}`,'sys'));
+  pr('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━','head');
+  pb();
+}
+
+// ─── Chart ─────────────────────────────────────────────────────────────────
+const tc='rgba(221,226,232,.38)',gc='rgba(255,255,255,.05)';
+function mkChart(id,type,labels,datasets,dualY=false){
+  setTimeout(()=>{
+    const ds=datasets.map(d=>({label:d.l,data:d.d,backgroundColor:d.bg,borderColor:d.border||d.bg,borderRadius:3,borderWidth:0,yAxisID:d.y||'y',type:d.t||type}));
+    const scales={x:{grid:{display:false},ticks:{color:tc,font:{size:10,family:'IBM Plex Mono'}},border:{color:gc}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'k':v},border:{color:'transparent'}}};
+    if(dualY)scales.y2={position:'right',grid:{display:false},ticks:{color:tc,font:{size:10}},border:{color:'transparent'}};
+    new Chart(document.getElementById(id),{type,data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:tc,font:{size:10,family:'IBM Plex Mono'},boxWidth:10}}},scales}});
+  },80);
+}
+
+// ─── Utils ─────────────────────────────────────────────────────────────────
+const fmt  = n => Math.round(+n||0).toLocaleString();
+const fmtK = n => n>=1e6?(n/1e6).toFixed(1)+'M':n>=1000?(n/1000).toFixed(1)+'k':String(Math.round(n));
+const sum  = (arr,k) => arr.reduce((s,x)=>s+(+x[k]||0),0);
+</script>
+</body>
+</html>
